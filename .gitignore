@@ -208,3 +208,10 @@ __marimo__/
 
 
 spins_sdp/results/
+
+
+# Mac OS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
