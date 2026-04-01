@@ -1,0 +1,30 @@
+## Runtime dependencies (for running the experiment scripts on a cluster)
+## Install dev/notebook/plotting extras via requirements-dev.txt.
+##
+## Uses >= (minimum version) instead of == so that pip can always find
+## a pre-built binary wheel on any platform / Python version.
+## Pass --prefer-binary to pip install to avoid source builds.
+
+# Core numerics
+numpy>=2.0
+scipy>=1.13
+tqdm
+
+# SDP stack
+cvxpy>=1.5
+mosek
+
+# Exact diagonalization (used by spins_sdp/models.py)
+qutip
+
+# DMRG (used by spins_sdp/variational.py and spins_sdp/scripts/dmrg.py)
+physics-tenpy
+
+# NOTE:
+# - pandas is optional now (only needed for dataframe helpers).
+
+# Bayesian optimization
+scikit-learn
+
+# Results storage
+h5py

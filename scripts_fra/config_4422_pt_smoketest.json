@@ -1,0 +1,55 @@
+{
+    "_title": "4422 Smoke Test Config (PT, NPA1→NPA2, fast)",
+    "_note": "Keeps NPA1→NPA2 (N=40, fast SDP) for the smoke test. Uses tiny PT params to complete in seconds.",
+    "_eval_budget": "2 chains × 2 epochs × 5 steps = 20 SDP evaluations per (expression, k).",
+    "method": "pt",
+    "start_level": 1,
+    "end_level": 2,
+    "indices": [
+        0,
+        1,
+        2
+    ],
+    "num_seeds": 1,
+    "seed": 42,
+    "starting_set": "npa1",
+    "final_set": "npa2",
+    "k_values_to_test": [
+        0,
+        5,
+        20,
+        40
+    ],
+    "mosek_tol": 1e-6,
+    "feedback": false,
+    "resume": false,
+    "verbose": true,
+    "pt": {
+        "_note": "Minimal PT for smoke testing only.",
+        "num_chains": 2,
+        "num_epochs": 2,
+        "steps_per_epoch": 5,
+        "T_min": 0.1,
+        "T_max": 2.0
+    },
+    "sa": {
+        "steps": 20,
+        "T_start": 1.0,
+        "alpha": 0.95
+    },
+    "bo": {
+        "init_train_size": 2,
+        "steps": 3,
+        "beta": 2.0,
+        "candidates_per_iter": 10,
+        "num_trees": 10
+    },
+    "rbm": {
+        "steps": 20,
+        "T_start": 1.0,
+        "alpha": 0.95,
+        "learning_rate": 0.01,
+        "decay": 0.95,
+        "n_mcmc_steps": 10
+    }
+}

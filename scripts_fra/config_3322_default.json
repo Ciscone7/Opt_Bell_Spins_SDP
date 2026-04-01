@@ -1,0 +1,69 @@
+{
+    "_note": "Physics parameters (m_a, m_b, d_a, d_b) are hardcoded in the scripts and NOT set here.",
+    "_eval_budget": "SA=200, RBM=200, BO=50, PT=1000. Brute force at k=10 costs C(21,10)=352716 evaluations.",
+    "method": "pt",
+    "num_seeds": 30,
+    "seed": 42,
+    "starting_set": "npa1",
+    "final_set": "npa2",
+    "k_values_to_test": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+    ],
+    "mosek_tol": 1e-6,
+    "feedback": false,
+    "resume": true,
+    "verbose": true,
+    "lookup_table": true,
+    "sa": {
+        "_note": "200 SDP evaluations. T_start tuned to cost function range [0.251, 0.375]. alpha=0.95 over 200 steps gives final T ~ 2.7e-5.",
+        "steps": 200,
+        "T_start": 0.3,
+        "alpha": 0.95
+    },
+    "pt": {
+        "_note": "1000 SDP evaluations total (5 chains x 200 steps). Geometric ladder [0.1, 0.21, 0.45, 0.95, 2.0] gives neighbour ratio ~2.1, keeping swap acceptance above 20-30%.",
+        "num_chains": 5,
+        "num_epochs": 10,
+        "steps_per_epoch": 20,
+        "T_min": 0.1,
+        "T_max": 2.0
+    },
+    "bo": {
+        "_note": "50 SDP evaluations total (10 init + 40 iterations). Kept lean to preserve BO identity as sample-efficient method. candidates_per_iter=200 compensates for fewer iterations. num_trees controls the RandomForest surrogate.",
+        "init_train_size": 10,
+        "steps": 40,
+        "beta": 2.0,
+        "candidates_per_iter": 200,
+        "num_trees": 100
+    },
+    "rbm": {
+        "_note": "200 SDP evaluations, matching SA for direct comparison. T_start and alpha aligned with SA schedule. learning_rate/decay/n_mcmc_steps are SpinsSDP-internal (ADAM optimizer) and not configurable here.",
+        "steps": 200,
+        "T_start": 0.3,
+        "alpha": 0.95,
+        "learning_rate": 0.01,
+        "decay": 0.95,
+        "n_mcmc_steps": 10
+    }
+}

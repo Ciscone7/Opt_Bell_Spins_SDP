@@ -1,0 +1,47 @@
+{
+    "_note": "Physics parameters (m_a, m_b, d_a, d_b) are hardcoded in the scripts and NOT set here.",
+    "_eval_budget": "SA=200, RBM=200, BO=50, PT=1000. Brute force at k=10 on N=40 costs C(40,10)~850M evaluations.",
+    "method": "pt",
+    "_comment_indices": "null = run all expressions; set to a list like [0,1,5] to run specific ones",
+    "indices": null,
+    "num_seeds": 10,
+    "seed": 42,
+    "starting_set": "npa1",
+    "final_set": "npa2",
+    "k_max_auto": true,
+    "mosek_tol": 1e-6,
+    "feedback": false,
+    "resume": true,
+    "verbose": true,
+    "sa": {
+        "_note": "200 SDP evaluations. T_start=1.0 tuned to 4422 cost function range. alpha=0.95 over 200 steps.",
+        "steps": 200,
+        "T_start": 1.0,
+        "alpha": 0.95
+    },
+    "pt": {
+        "_note": "1000 SDP evaluations total (5 chains x 200 steps). Geometric ladder [0.1, ..., 2.0].",
+        "num_chains": 5,
+        "num_epochs": 5,
+        "steps_per_epoch": 40,
+        "T_min": 0.1,
+        "T_max": 2.0
+    },
+    "bo": {
+        "_note": "50 SDP evaluations total (5 init + 10 iterations). candidates_per_iter=100. num_trees controls the RandomForest surrogate.",
+        "init_train_size": 5,
+        "steps": 10,
+        "beta": 2.0,
+        "candidates_per_iter": 100,
+        "num_trees": 100
+    },
+    "rbm": {
+        "_note": "200 SDP evaluations. T_start and alpha control the annealing schedule. learning_rate/decay/n_mcmc_steps are SpinsSDP-internal (ADAM optimizer) and not configurable here.",
+        "steps": 200,
+        "T_start": 1.0,
+        "alpha": 0.95,
+        "learning_rate": 0.01,
+        "decay": 0.95,
+        "n_mcmc_steps": 10
+    }
+}

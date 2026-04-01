@@ -1,0 +1,164 @@
+================================================================================
+  SPINSDP — 4422 BELL CAMPAIGN: SETUP & RUN GUIDE (PARALLEL TEMPERING)
+================================================================================
+
+Last updated: 2026-03-04
+Project root: SpinsSDP/
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 0 — SEARCH SPACE CONTEXT
+────────────────────────────────────────────────────────────────────────────────
+
+4422 scenario: m_A=m_B=4 settings, d_A=d_B=2 outcomes.
+
+  NPA level range  │  Starting set  │  Candidate pool (N)  │  Peak C(N, N/2)
+  ─────────────────┼────────────────┼──────────────────────┼──────────────────
+  NPA1 → NPA2      │      9 ops     │      N = 40          │  ~1.4 × 10^11
+  NPA1 → NPA3      │      9 ops     │      N = 208         │  ~2.3 × 10^61
+  NPA1 → NPA4      │      9 ops     │      N = 856         │  ~1.3 × 10^256
+
+Production runs use NPA1→NPA4 (N=856). PT is a heuristic — it will not
+exhaustively cover 10^256 configs, but will find high-quality solutions
+through guided stochastic exploration.
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1 — PT PARAMETER RATIONALE (production config, NPA1→NPA4)
+────────────────────────────────────────────────────────────────────────────────
+
+  Parameter        │  Value  │  Why
+  ─────────────────┼─────────┼──────────────────────────────────────────────────
+  num_chains       │  10     │  Spans a wide temperature range; frequent swaps.
+  T_min            │  0.005  │  Cold chain near optima. Bell deltas ~0.01–0.1;
+                   │         │  T=0.005 → acceptance exp(-ΔE/T) ≈ 14% for 0.1.
+  T_max            │  5.0    │  Hot chain accepts any swap (exp(-0.1/5)=0.98).
+  Geometric ratio  │  ×2.15  │  (5.0/0.005)^(1/9) → inter-chain swap acc. ~25%.
+  steps_per_epoch  │  200    │  N=856 needs more steps per epoch to mix within
+                   │         │  each chain (vs. N=40 where 50 steps suffice).
+  num_epochs       │  50     │  50 swap rounds to propagate info up/down ladder.
+  evals per job    │ 100,000 │  10 chains × 50 epochs × 200 steps.
+  num_seeds        │  5      │  5 restarts sample multiple basins.
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2 — ERROR_TO_STOP (early stopping per expression)
+────────────────────────────────────────────────────────────────────────────────
+
+When error_to_stop is set to a float in (0, 1], the script iterates over k values
+one at a time. After each k, it computes:
+
+    rel_err = |best_at_k - REFERENCE_VALUE[expr]| / |REFERENCE_VALUE[expr]|
+
+If rel_err < error_to_stop, the remaining k values for that expression are skipped
+and the script moves to the next Bell expression.
+
+  Config value           │  Behaviour
+  ───────────────────────┼───────────────────────────────────────────────────
+  "error_to_stop": 0.05  │  Stop when within 5% of reference (production)
+  "error_to_stop": 0.10  │  Stop when within 10% of reference (default)
+  "error_to_stop": null  │  Disable — always run ALL k values
+
+Example output when early stopping triggers:
+  k=0: best=1.207107, ref=1.2071, rel_err=0.0000
+  → rel_err=0.0000 < error_to_stop=0.05; skipping remaining k values.
+
+Example output when it does not trigger (runs all k):
+  k=0:  rel_err=0.2135
+  k=5:  rel_err=0.2135
+  k=20: rel_err=0.2081
+  k=40: rel_err=0.1441  ← threshold never reached, all k values run
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2 — ENVIRONMENT SETUP (ONCE)
+────────────────────────────────────────────────────────────────────────────────
+
+# macOS / Linux
+cd /path/to/SpinsSDP
+bash setup_env.sh                       # create .venv and install dependencies
+source .venv/bin/activate               # activate (repeat every new terminal)
+
+# Windows
+cd C:\path\to\SpinsSDP
+setup_env.bat                           # create .venv and install dependencies
+.venv\Scripts\activate.bat              # activate (repeat every new terminal)
+
+# MOSEK LICENSE (required for SDP evaluation)
+#   macOS/Linux:  place mosek.lic at   ~/mosek/mosek.lic
+#   Windows:      place mosek.lic at   %USERPROFILE%\mosek\mosek.lic
+#   Or:           export MOSEKLM_LICENSE_FILE=/path/to/mosek.lic
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3 — SMOKE TEST (verify setup before committing to the full run)
+────────────────────────────────────────────────────────────────────────────────
+
+Config: scripts_fra/config_4422_pt_smoketest.json
+  NPA1→NPA2 (N=40, fast SDP). Expressions 0–2. k in {0,5,20,40}. 1 seed.
+  2 chains × 2 epochs × 5 steps = 20 evals per job. Runs in ~10 seconds.
+
+python -m scripts_fra.run_4422_fra \
+    --config scripts_fra/config_4422_pt_smoketest.json
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4 — PRODUCTION RUN (NPA1→NPA4, 10 chains)
+────────────────────────────────────────────────────────────────────────────────
+
+Config: scripts_fra/config_4422_pt_production.json
+  NPA1→NPA4 (N=856). All 174 expressions. k from 0→856. 5 seeds.
+  10 chains × 50 epochs × 200 steps = 100,000 SDP evals per job.
+  NOTE: Each SDP at NPA4 level is significantly more expensive than NPA2.
+
+# ── All 174 expressions ───────────────────────────────────────────────────────
+python -m scripts_fra.run_4422_fra \
+    --config scripts_fra/config_4422_pt_production.json
+
+# ── Selected subset (e.g. expressions 0, 5, 10, 50, 100) ─────────────────────
+python -m scripts_fra.run_4422_fra \
+    --config scripts_fra/config_4422_pt_production.json \
+    --indices 0 5 10 50 100
+
+# ── First 10 expressions ──────────────────────────────────────────────────────
+python -m scripts_fra.run_4422_fra \
+    --config scripts_fra/config_4422_pt_production.json \
+    --indices 0 1 2 3 4 5 6 7 8 9
+
+# ── Resume an interrupted run (resume=true is set in config) ──────────────────
+python -m scripts_fra.run_4422_fra \
+    --config scripts_fra/config_4422_pt_production.json
+
+# ── Override any config value via CLI ─────────────────────────────────────────
+# Example: push chains to 16, more epochs, just 3 expressions
+python -m scripts_fra.run_4422_fra \
+    --config scripts_fra/config_4422_pt_production.json \
+    --pt-chains 16 --pt-epochs 80 --indices 0 1 2
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5 — OUTPUT LOCATION
+────────────────────────────────────────────────────────────────────────────────
+
+results/bell_optimization_sweep/v1/<run_name>_expr{N}/
+    meta.json   ← config, timestamps, provenance
+    data.npz    ← run_idx, k, seed, best_value, elapsed_s, n_obj_evals, mask_bits
+
+Run name (production): I4422_campaign_mA4_mB4_dA2_dB2_lv1to4_pt
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 6 — FULL COMMAND REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+
+# One-time setup
+bash setup_env.sh
+
+# Every session
+source .venv/bin/activate
+
+# Smoke test (NPA1→NPA2, N=40, seconds)
+python -m scripts_fra.run_4422_fra --config scripts_fra/config_4422_pt_smoketest.json
+
+# Production — all expressions (NPA1→NPA4, N=856)
+python -m scripts_fra.run_4422_fra --config scripts_fra/config_4422_pt_production.json
+
+# Production — selected subset
+python -m scripts_fra.run_4422_fra --config scripts_fra/config_4422_pt_production.json --indices 0 5 10 50 100
+
+# Help
+python -m scripts_fra.run_4422_fra --help
+
+================================================================================

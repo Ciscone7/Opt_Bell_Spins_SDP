@@ -1,0 +1,5 @@
+# Ensure consistent line endings across platforms
+* text=auto
+
+# Shell scripts must use LF (prevents $'\r': command not found on Linux)
+*.sh text eol=lf

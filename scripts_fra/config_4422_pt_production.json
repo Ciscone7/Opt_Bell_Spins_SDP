@@ -1,0 +1,57 @@
+{
+    "_title": "4422 Massive Exploration — Production Config (PT, 10 chains, NPA1→NPA2)",
+    "_search_space": "NPA1→NPA2: N=40 candidate moments. At k=20: C(40,20) ≈ 1.4×10^11. Total: 2^40 ≈ 1.1 trillion.",
+    "_eval_budget": "10 chains × 20 epochs × 50 steps/epoch = 10,000 SDP evaluations per (expression, k, seed).",
+    "_pt_rationale": {
+        "num_chains_10": "10 replicas span a wide T-range with frequent inter-chain swaps.",
+        "T_min_0.05": "Cold chain near optima. Bell cost deltas ~0.05; T=0.05 gives acceptance exp(-1)≈37% — selective but not frozen.",
+        "T_max_2.0": "Hot chain accepts essentially any swap in the N=40 space.",
+        "geometric_ladder": "Ratio = (2.0/0.05)^(1/9) ≈ 1.52. Keeps inter-chain swap acceptance ~30-40%.",
+        "steps_per_epoch_50": "N=40 mixes well with 50 Metropolis steps per epoch.",
+        "num_epochs_20": "20 swap rounds give good propagation through the temperature ladder.",
+        "num_seeds_15": "15 independent restarts for robust landscape sampling."
+    },
+    "method": "pt",
+    "start_level": 1,
+    "end_level": 2,
+    "indices": null,
+    "num_seeds": 15,
+    "seed": 42,
+    "k_max_auto": true,
+    "mosek_tol": 1e-6,
+    "feedback": false,
+    "resume": true,
+    "verbose": true,
+    "error_to_stop": 0.1,
+    "_comment_error_to_stop": "Stop k-loop when |best_k - ref| / ref < 0.1 (within 10% of reference). Set null to run all k values.",
+    "pt": {
+        "num_chains": 10,
+        "num_epochs": 20,
+        "steps_per_epoch": 50,
+        "T_min": 0.05,
+        "T_max": 2.0
+    },
+    "sa": {
+        "_note": "Not used with method=pt.",
+        "steps": 200,
+        "T_start": 1.0,
+        "alpha": 0.95
+    },
+    "bo": {
+        "_note": "Not used with method=pt.",
+        "init_train_size": 5,
+        "steps": 10,
+        "beta": 2.0,
+        "candidates_per_iter": 100,
+        "num_trees": 100
+    },
+    "rbm": {
+        "_note": "Not used with method=pt.",
+        "steps": 200,
+        "T_start": 1.0,
+        "alpha": 0.95,
+        "learning_rate": 0.01,
+        "decay": 0.95,
+        "n_mcmc_steps": 10
+    }
+}

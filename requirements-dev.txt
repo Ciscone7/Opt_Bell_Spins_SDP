@@ -1,0 +1,30 @@
+# Development dependencies (local development only)
+# Install with: pip install -r requirements-dev.txt
+
+# Includes everything in requirements.txt
+-r requirements.txt
+
+# Code formatting and linting
+black>=23.0
+pylint
+mypy
+
+# Interactive notebooks
+ipython>=8.0
+ipykernel>=6.0
+jupyterlab>=4.0
+
+# Plotting / analysis
+matplotlib
+pandas
+
+# Testing
+pytest>=7.0
+pytest-cov
+
+# Optional features for development
+scikit-learn>=1.0
+jax>=0.4
+equinox>=0.11
+optax>=0.1
+h5py>=3.0
