@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 from functools import lru_cache
-from typing import Optional, List, Set, Tuple, Dict, Any
+from typing import Iterable, Optional, List, Set, Tuple, Dict, Any
 
 from spins.pauli_logic import PauliWord, is_variant_under_sign_symmetries
 
@@ -19,6 +19,8 @@ class SymmetryManager:
     use_permutation: bool = False        # Group by X/Y/Z relabeling
     use_real_operator: bool = False     # Restrict to real-valued moments (loosens the bound)
     use_real_basis: bool = False        # Use Ỹ=iY basis (makes moment matrix real without losing tightness)
+    use_translation_dft: bool = False    # Block-diagonalize the moment matrix in translation frequency
+                                         # (requires the basis to be closed under translation; see spins/translation_dft.py)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to a dictionary for serialization/config hashing."""
@@ -52,6 +54,32 @@ class SymmetryManager:
     def none(cls, N: int) -> "SymmetryManager":
         """Return a SymmetryManager with no symmetries enabled."""
         return cls(N=N)
+
+    def is_translation_closed(self, basis: Iterable[PauliWord]) -> bool:
+        """Check that every translation orbit is fully represented in the basis.
+
+        For each w in the basis, all N cyclic shifts of w must also be in the basis.
+        This is the Step-0 gate for the translation-DFT block-diagonalization
+        (see spins/translation_dft.py): the optimization is only correct when
+        the basis decomposes into complete translation orbits.
+
+        Each orbit is checked only once: once we walk an orbit successfully, every
+        word in it is marked seen and skipped on the next outer iteration.
+        """
+        basis_set = set(basis)
+        seen: Set[PauliWord] = set()
+        for w in basis_set:
+            if w in seen:
+                continue
+            orbit = [w]
+            current = w
+            for _ in range(self.N - 1):
+                current = current.shift(1, self.N)
+                if current not in basis_set:
+                    return False
+                orbit.append(current)
+            seen.update(orbit)
+        return True
 
     @lru_cache(maxsize=None)
     def canonical_translation(self, w: PauliWord) -> PauliWord:

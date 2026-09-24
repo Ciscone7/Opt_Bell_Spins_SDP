@@ -126,9 +126,16 @@ def solve_pauli_relaxation(
 # Block diagonalization
 # ----------------------------------
 
-def build_block_reps(full_basis: List[PauliWord], symmetry_manager: SymmetryManager) -> Tuple[List[PauliMomentMatrixRep], Dict[PauliWord, int]]:
+def build_block_reps(full_basis: List[PauliWord], symmetry_manager: SymmetryManager) -> Tuple[List[Any], Dict[PauliWord, int]]:
+    # Translation-DFT block-diagonalization (see spins/translation_dft.py).
+    # Replaces the per-sector block by N smaller frequency blocks; the resulting
+    # rep list slots into build_block_diagonal_sdp unchanged.
+    if symmetry_manager.use_translation_dft:
+        from spins.translation_dft import build_translation_dft_reps
+        return build_translation_dft_reps(full_basis, symmetry_manager)
+
     blocks = {}
-        
+
     # Split Basis (Rotation Symmetry)
     if symmetry_manager.use_rotation:
         for w in full_basis:
@@ -230,32 +237,20 @@ def build_block_diagonal_sdp(
     
     # Iterate over Blocks
     for rep in reps:
-        n = rep.label_idx.shape[0]
-        
-        # We map y -> flattened matrix vector (size n*n)
-        rows = np.arange(n * n, dtype=np.int32)
-        cols = rep.label_idx.reshape(-1, order="F").astype(np.int32)
-        
-        # --- Build Real Part A ---
-        dataA = rep.a_coef.reshape(-1, order="F").astype(float)
-        # Construct the linear map CA: y -> vec(A)
-        CA = sp.coo_matrix((dataA, (rows, cols)), shape=(n * n, m)).tocsr()
+        # Rep provides linear maps CA, CB such that vec_F(Re M)=CA@y, vec_F(Im M)=CB@y.
+        # CB is None when the imaginary part is structurally zero.
+        CA, CB, n = rep.linear_maps(m)
+
         vec_A = cp.Constant(CA) @ y
         A = cp.reshape(vec_A, (n, n), order="F")
-        
-        if rep.b_coef is None or rep.b_coef.size == 0:
+
+        if CB is None:
             # --- CASE 1: Real Symmetric Block ---
-            # Im(M) is structurally zero. We just enforce A >= 0.
             constraints.append(A >> 0)
         else:
-            # --- CASE 2: Complex Hermitian Block ---
-            # Build Imaginary Part B
-            dataB = rep.b_coef.reshape(-1, order="F").astype(float)
-            CB = sp.coo_matrix((dataB, (rows, cols)), shape=(n * n, m)).tocsr()
+            # --- CASE 2: Complex Hermitian Block (real embedding) ---
             vec_B = cp.Constant(CB) @ y
             B = cp.reshape(vec_B, (n, n), order="F")
-            
-            # Real Embedding: [[A, -B], [B, A]] >= 0
             K = cp.bmat([[A, -B], [B, A]])
             constraints.append(K >> 0)
     

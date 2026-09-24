@@ -221,6 +221,26 @@ class PauliMomentMatrixRep:
     b_coef: Optional[np.ndarray]           # (n,n) int8: Im coefficient in { -1,0,1 }
     idx_I: int                             # index of identity label
 
+    def linear_maps(self, num_y_vars: int):
+        """Return (CA, CB, n) where vec_F(Re M) = CA @ y, vec_F(Im M) = CB @ y.
+
+        CA, CB are scipy.sparse CSR matrices of shape (n*n, num_y_vars), and
+        the vectorisation is Fortran (column-major) order so that
+        ``cvxpy.reshape(vec, (n, n), order="F")`` recovers the matrix.
+        CB is ``None`` when the imaginary part is structurally zero.
+        """
+        import scipy.sparse as _sp
+        n = self.label_idx.shape[0]
+        rows = np.arange(n * n, dtype=np.int32)
+        cols = self.label_idx.reshape(-1, order="F").astype(np.int32)
+        dataA = self.a_coef.reshape(-1, order="F").astype(float)
+        CA = _sp.coo_matrix((dataA, (rows, cols)), shape=(n * n, num_y_vars)).tocsr()
+        if self.b_coef is None or self.b_coef.size == 0:
+            return CA, None, n
+        dataB = self.b_coef.reshape(-1, order="F").astype(float)
+        CB = _sp.coo_matrix((dataB, (rows, cols)), shape=(n * n, num_y_vars)).tocsr()
+        return CA, CB, n
+
 Operator = Dict[PauliWord, complex]
 
 I_PAULI: Final[PauliWord] = PauliWord(0, 0)
